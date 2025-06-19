@@ -13,7 +13,7 @@ const PurchaseDwt = () => {
     usePreviewBNB(tokenAmount);
   const { referrer, isLoading: refLoading } = useReferrer();
   const { buyTokens, isPending, txLoading, txSuccess } = useBuyTokens();
-  const { balanceDwt , refetchDwt  } = useDwtBalance();
+  const { balanceDwt, refetchDwt } = useDwtBalance();
 
   const handlePurchase = () => {
     buyTokens({
@@ -27,7 +27,7 @@ const PurchaseDwt = () => {
     if (txSuccess) {
       console.log("Tokens bought successfully!");
       toast.success("Token Bought");
-       refetchDwt();
+      refetchDwt();
     }
   }, [txSuccess]);
 
@@ -88,7 +88,8 @@ const PurchaseDwt = () => {
       </button>
 
       <p>
-        <strong>DWT Balance:</strong> {balanceDwt ? formatEther(balanceDwt) : "0"} DWT
+        <strong>DWT Balance:</strong>{" "}
+        {balanceDwt ? formatEther(balanceDwt) : "0"} DWT
       </p>
     </div>
   );
