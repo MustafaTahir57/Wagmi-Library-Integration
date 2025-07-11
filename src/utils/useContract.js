@@ -89,8 +89,8 @@ export const useBuyTokens = () => {
   } = useWriteContract();
   const { isLoading: txLoading, isSuccess: txSuccess } =
     useWaitForTransactionReceipt({ hash });
-  // const { address, isConnected } = useAccount();
-  // const config = useConfig();
+  const { address, isConnected } = useAccount();
+  const config = useConfig();
 
   //   const buyTokens = ({ referrer, bnbValue, tokenAmount }) => {
   //     const tokenAmountWithDecimals = parseUnits(tokenAmount.toString(), 18);
@@ -119,25 +119,27 @@ export const useBuyTokens = () => {
     console.log("Buffer and Base Value", buffer, baseValue, totalValue);
 
     try {
-      // const estimatedGas = await estimateGas(config, {
-      //   account: address,
-      //   abi: ICO_ABI,
-      //   address: ICO_ADDRESS,
-      //   functionName: "buyTokens",
-      //   args: [
-      //     tokenAmountWithDecimals,
-      //     "0",
-      //     referrer ?? "0x0000000000000000000000000000000000000000",
-      //   ],
-      //   value: totalValue.toString(),
-      //   // chainId: 56, // ✅ OPTIONAL but recommended
-      // });
+      const estimatedGas = await estimateGas(config, {
+        account: address,
+        abi: ICO_ABI,
+        address: ICO_ADDRESS,
+        functionName: "buyTokens",
+        args: [
+          tokenAmountWithDecimals,
+          "0",
+          referrer ?? "0x0000000000000000000000000000000000000000",
+        ],
+        value: totalValue.toString(),
+        // chainId: 56, // ✅ OPTIONAL but recommended
+      });
 
-      // const bufferedGas = (estimatedGas * 150n) / 100n;
+      const minGas = 300000n;
+      const bufferedGas = (estimatedGas * 150n) / 100n;
+      const finalGas = bufferedGas > minGas ? bufferedGas : minGas;
 
-      // console.log("Buffered Gas", bufferedGas, typeof totalValue);
+      console.log("Buffered Gas", bufferedGas, finalGas, typeof totalValue);
 
-      writeContract({
+      const tx = await writeContract({
         abi: ICO_ABI,
         address: ICO_ADDRESS,
         functionName: "buyTokens",
@@ -147,8 +149,10 @@ export const useBuyTokens = () => {
           referrer || "0x0000000000000000000000000000000000000000",
         ],
         value: totalValue.toString(),
-        // gas: bufferedGas,
+        gas: finalGas, // The issue is here giving the wrong estimation
       });
+
+      console.log("Tx", tx);
     } catch (error) {
       console.error("Gas estimation failed:", error);
     }

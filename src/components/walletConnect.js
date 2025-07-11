@@ -5,10 +5,13 @@ import {
   useBalance,
   useDisconnect,
   useChainId,
+  useSwitchChain,
+  useSignMessage,
 } from "wagmi";
 import "./walletConnect.css";
 import { walletConnect } from "wagmi/connectors";
 import { useConnectorClient } from "wagmi";
+import { bscTestnet } from "../chains";
 
 const WalletConnect = () => {
   const chainId = useChainId();
@@ -16,6 +19,12 @@ const WalletConnect = () => {
   const { connect, connectors } = useConnect();
   const { data: client } = useConnectorClient();
   const { address, isConnected, chain, connector } = useAccount();
+  const {
+    switchChain,
+    chains,
+    error: switchError,
+    isPending: switching,
+  } = useSwitchChain();
   const {
     data: balance,
     isLoading,
@@ -27,9 +36,17 @@ const WalletConnect = () => {
   });
 
   const { disconnect } = useDisconnect();
+  const {
+    data: signature,
+    isSuccess,
+    isError,
+    signMessage,
+    variables,
+    errorSignInMessage,
+  } = useSignMessage();
 
   console.log("Connectors", connectors);
-  console.log("Account", address)
+  console.log("Account", address);
 
   const [showModal, setshowModal] = useState(false);
 
@@ -37,63 +54,39 @@ const WalletConnect = () => {
 
   console.log("Connectors", connectors);
 
-  // useEffect(() => {
-  //   if (!connector) return;
-
-  //   console.log("Connected via:", connector.id);
-
-  //   if (connector.id === "walletConnect") {
-  //     connector.getProvider().then((provider) => {
-  //       const isV1 = !!provider.bridge; // Only v1 has bridge key
-  //       console.log("WalletConnect Version:", isV1 ? "v1" : "v2");
-  //     });
-  //   }
-  // }, [connector]);
-
   useEffect(() => {
     if (!chain?.id) return;
     console.log("🔄 Chain changed ->", chain?.id);
   }, [chain?.id]);
 
   console.log("Chain ID", chain?.id);
-
-  // const detectInjectedWallets = () => {
-  //   if (typeof window === "undefined" || !window.ethereum) {
-  //     return [];
-  //   }
-
-  //   const walletSet = new Set(); // Use Set to automatically avoid duplicates
-  //   const provider = window.ethereum;
-  //   const providers = provider.providers || [provider];
-
-  //   providers.forEach((prov) => {
-  //     if (prov.isMetaMask) walletSet.add("MetaMask");
-  //     if (prov.isTrust) walletSet.add("Trust Wallet");
-  //     if (prov.isCoinbaseWallet) walletSet.add("Coinbase Wallet");
-  //     if (prov.isFrame) walletSet.add("Frame");
-  //     if (prov.isTally) walletSet.add("Tally");
-  //     if (prov.isBraveWallet) walletSet.add("Brave Wallet");
-  //     if (prov.isRabby) walletSet.add("Rabby Wallet");
-
-  //     // ✅ Detect WalletConnect version
-  //     if (prov.isWalletConnect) {
-  //       const isV1 = !!prov.bridge;
-  //       walletSet.add(`WalletConnect ${isV1 ? "v1" : "v2"}`);
-  //     }
-  //   });
-
-  //   const wallets = Array.from(walletSet); // Convert Set to Array
-  //   console.log("All wallets Installed", wallets);
-
-  //   return wallets;
-  // };
-
   console.log("Balance", { balance });
 
-  // useEffect(() => {
-  //   const installedWallets = detectInjectedWallets();
-  //   console.log("Detected Wallets:", installedWallets);
-  // }, []);
+  useEffect(() => {
+    const ensureBscTestnet = async () => {
+      if (isConnected && chainId !== bscTestnet.id) {
+        try {
+          console.log("⚠️ Not on BSC Testnet. Switching...");
+          await switchChain({ chainId: bscTestnet.id });
+          console.log("✅ Switched to BSC Testnet");
+        } catch (err) {
+          console.error("❌ Failed to switch network:", err);
+        }
+      }
+    };
+
+    ensureBscTestnet();
+  }, [isConnected, chainId]);
+
+  const signInMessage = () => {
+    const message = "Sign this message to authenticate with Quecko"; // Customize this securely
+    signMessage({ message });
+  };
+
+  const truncateSignature = (sig) => {
+    if (!sig) return "";
+    return `${sig.slice(0, 6)}...${sig.slice(-4)}`;
+  };
 
   return (
     <div className="wallet-container">
@@ -110,9 +103,9 @@ const WalletConnect = () => {
             <div className="wallet-modal">
               <button
                 className="wallet-option"
-                onClick={() => {
+                onClick={async () => {
                   const connector = isMobile
-                    ? connectors.find((c) => c.id === "walletConnect")
+                    ? connectors.find((c) => c.id === "metaMaskSDK")
                     : connectors.find((c) => c.id === "metaMaskSDK");
 
                   console.log("Connector Clicked", connector);
@@ -124,7 +117,12 @@ const WalletConnect = () => {
                     return;
                   }
 
-                  connect({ connector });
+                  await connect({ connector });
+
+                  console.log(
+                    "Chain Id after connecting the wallet",
+                    chain?.id
+                  );
                 }}
               >
                 MetaMask
@@ -177,9 +175,24 @@ const WalletConnect = () => {
       )}
 
       {isConnected && (
-        <button className="disconnect-button" onClick={() => disconnect()}>
-          Disconnect
-        </button>
+        <>
+          <button className="disconnect-button" onClick={() => signInMessage()}>
+            Sign In With Quecko
+          </button>{" "}
+          <br />
+          {isSuccess && (
+            <div>
+              ✅ Signed Message:
+              <br />
+              <p>Signature: {truncateSignature(signature)}</p>
+            </div>
+          )}
+          {isError && <div>❌ Error: {error?.message}</div>}
+          <br />
+          <button className="disconnect-button" onClick={() => disconnect()}>
+            Disconnect
+          </button>
+        </>
       )}
     </div>
   );

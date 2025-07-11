@@ -11,7 +11,7 @@ const projectId = "a35691f011761d63c1dd60354147a840";
 
 console.log("Metamask", metaMask);
 const config = createConfig({
-  chains: [bscTestnet],
+  chains: [bscTestnet, mainnet],
   connectors: [
     injected(),
     metaMask(),
@@ -28,7 +28,7 @@ const config = createConfig({
     }),
   ],
   transports: {
-    // [mainnet.id]: http(),
+    [mainnet.id]: http(),
     // [polygon.id]: http(),
     // [optimism.id]: http(),
     // // [bscMainnet.id]: http("https://bsc-dataseed.binance.org"),
